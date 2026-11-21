@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Sylvan Leap — Canopy Conquest</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #08130d;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #game-wrap {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      max-width: 1024px;
+      max-height: 580px;
+      background: linear-gradient(180deg, #10261b 0%, #193b29 65%, #0c1d14 100%);
+      overflow: hidden;
+      box-shadow: 0 12px 45px rgba(0, 0, 0, 0.75);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Top HUD */
+    #hud {
+      position: absolute;
+      top: 12px;
+      left: 16px;
+      right: 16px;
+      display: none;
+      justify-content: space-between;
+      align-items: flex-start;
+      color: #e8f5ec;
+      font-weight: 700;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.65);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .hud-left {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #health-bars {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      max-width: 280px;
+    }
+
+    .hp-segment {
+      width: 22px;
+      height: 12px;
+      border-radius: 3px;
+      border: 1.5px solid rgba(255, 255, 255, 0.45);
+      background: rgba(10, 22, 16, 0.65);
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .hp-segment.filled {
+      background: #44e378;
+      box-shadow: 0 0 8px rgba(68, 227, 120, 0.45);
+    }
+
+    .hud-center {
+      text-align: center;
+      font-size: 16px;
+    }
+
+    .hud-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      pointer-events: auto;
+    }
+
+    .hud-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+    }
+
+    .mini-btn {
+      background: rgba(20, 48, 34, 0.85);
+      color: #b7f0c0;
+      border: 1.5px solid rgba(183, 240, 192, 0.4);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .mini-btn:active {
+      background: rgba(56, 183, 100, 0.35);
+    }
+
+    /* Boss Health Bar */
+    #boss-hud {
+      position: absolute;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 280px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #boss-name {
+      color: #ff9c9c;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+    }
+
+    #boss-bar-bg {
+      width: 100%;
+      height: 10px;
+      background: rgba(20, 10, 12, 0.8);
+      border: 1.5px solid rgba(255, 140, 140, 0.5);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    #boss-bar-fill {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #e63946, #ff758f);
+      transition: width 0.12s ease;
+    }
+
+    /* Overlays */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      background: rgba(8, 19, 13, 0.82);
+      backdrop-filter: blur(5px);
+      z-index: 5;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    h1 {
+      color: #b7f0c0;
+      font-size: 36px;
+      margin-bottom: 10px;
+      text-shadow: 0 3px 12px rgba(0, 0, 0, 0.6);
+    }
+
+    h2 {
+      color: #b7f0c0;
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: #d3ead8;
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 440px;
+      margin-bottom: 20px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button.primary-btn {
+      background: #38b764;
+      color: #07160d;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 28px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(56, 183, 100, 0.35);
+      transition: transform 0.1s ease, background-color 0.15s ease;
+    }
+
+    button.primary-btn:active {
+      transform: scale(0.96);
+    }
+
+    button.primary-btn:disabled {
+      background: #2b4a37;
+      color: #6f947c;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    button.secondary-btn {
+      background: rgba(24, 52, 38, 0.9);
+      color: #d8f3df;
+      border: 1.5px solid rgba(183, 240, 192, 0.4);
+      border-radius: 999px;
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Upgrade Card */
+    .upgrade-box {
+      background: rgba(15, 34, 24, 0.9);
+      border: 1.5px solid rgba(183, 240, 192, 0.3);
+      border-radius: 14px;
+      padding: 18px 24px;
+      margin-bottom: 20px;
+      max-width: 400px;
+      width: 100%;
+    }
+
+    .upgrade-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      color: #e8f5ec;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    /* Touch Controls */
+    #controls {
+      position: absolute;
+      bottom: 16px;
+      left: 18px;
+      right: 18px;
+      display: none;
+      justify-content: space-between;
+      align-items: flex-end;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .ctrl-cluster {
+      display: flex;
+      gap: 14px;
+      pointer-events: auto;
+    }
+
+    .ctrl-btn {
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      border: 2px solid rgba(214, 245, 222, 0.38);
+      background: rgba(14, 32, 22, 0.68);
+      color: #e6f7eb;
+      font-size: 22px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      backdrop-filter: blur(3px);
+    }
+
+    .ctrl-btn.attack-btn {
+      border-color: rgba(130, 245, 165, 0.65);
+      background: rgba(34, 92, 56, 0.72);
+      font-size: 14px;
+      letter-spacing: 0.5px;
+    }
+
+    .ctrl-btn:active {
+      background: rgba(56, 183, 100, 0.5);
+      transform: scale(0.95);
+    }
+
+    /* Landscape Orientation Hint on Portrait Phones */
+    #rotate-hint {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(12, 28, 19, 0.85);
+      color: #a9e6b8;
+      font-size: 12px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(169, 230, 184, 0.3);
+      pointer-events: none;
+      z-index: 6;
+      display: none;
+    }
+
+    @media (orientation: portrait) {
+      #rotate-hint {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="game-wrap">
+    <canvas id="game"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+      <div class="hud-left">
+        <div id="health-bars"></div>
+        <div style="font-size: 12px; color: #a7d9b5;">HP: <span id="hp-text">3/3</span></div>
+      </div>
+
+      <div class="hud-center">
+        <div id="level-label">Level 1 / 300</div>
+        <div id="stage-status" style="font-size: 12px; color: #9ce0af;">Reach the Boss Arena</div>
+      </div>
+
+      <div class="hud-right">
+        <div class="hud-row">
+          <span style="color: #ffe07d;">Essence: <span id="coins-label">0</span></span>
+          <button id="open-upgrade-btn" class="mini-btn">Upgrades</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Boss Health Bar -->
+    <div id="boss-hud">
+      <div id="boss-name">Canopy Slime Warden</div>
+      <div id="boss-bar-bg">
+        <div id="boss-bar-fill"></div>
+      </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="overlay">
+      <h1>Sylvan Leap</h1>
+      <p>Leap across mossy branches, slash combat slimes, and defeat the boss guarding the end of all 300 forest levels. Collect Slime Essence to upgrade your health up to 10 bars.</p>
+      <div class="btn-group">
+        <button id="start-btn" class="primary-btn">Start Leap</button>
+      </div>
+    </div>
+
+    <!-- Upgrade Modal -->
+    <div id="upgrade-screen" class="overlay hidden">
+      <h2>Sanctuary Upgrades</h2>
+      <p>Spend Slime Essence earned from defeating slimes and level bosses.</p>
+      <div class="upgrade-box">
+        <div class="upgrade-row">
+          <span>Max Health Bars</span>
+          <span id="upg-hp-count">3 / 10</span>
+        </div>
+        <div class="upgrade-row" style="font-size: 13px; color: #a9d9b6; font-weight: 500;">
+          <span>Current Essence: <strong id="upg-coins" style="color: #ffe07d;">0</strong></span>
+          <span>Cost: <strong id="upg-cost" style="color: #ffe07d;">25</strong></span>
+        </div>
+        <button id="buy-hp-btn" class="primary-btn" style="width: 100%; margin-top: 6px;">Upgrade +1 Health Bar</button>
+      </div>
+      <button id="close-upgrade-btn" class="secondary-btn">Back to Level</button>
+    </div>
+
+    <!-- Level Complete Screen -->
+    <div id="levelclear-screen" class="overlay hidden">
+      <h2 id="clear-title">Level 1 Cleared!</h2>
+      <p id="clear-subtitle">Boss defeated! Your health has been restored.</p>
+      <div class="upgrade-box">
+        <div class="upgrade-row">
+          <span>Max Health Bars</span>
+          <span id="clear-hp-count">3 / 10</span>
+        </div>
+        <div class="upgrade-row" style="font-size: 13px; color: #a9d9b6; font-weight: 500;">
+          <span>Essence: <strong id="clear-coins" style="color: #ffe07d;">0</strong></span>
+          <span>Upgrade Cost: <strong id="clear-cost" style="color: #ffe07d;">25</strong></span>
+        </div>
+        <button id="clear-buy-hp-btn" class="primary-btn" style="width: 100%; margin-top: 6px;">Upgrade +1 Health Bar</button>
+      </div>
+      <button id="next-level-btn" class="primary-btn">Next Level &rarr;</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameover-screen" class="overlay hidden">
+      <h1>Defeated in the Canopy</h1>
+      <p id="gameover-reason">You ran out of health bars.</p>
+      <div class="btn-group">
+        <button id="retry-btn" class="primary-btn">Retry Level</button>
+        <button id="gameover-upg-btn" class="secondary-btn">Upgrades</button>
+      </div>
+    </div>
+
+    <!-- Landscape Touch Controls -->
+    <div id="controls">
+      <div class="ctrl-cluster">
+        <button id="left-btn" class="ctrl-btn" aria-label="Move Left">&larr;</button>
+        <button id="right-btn" class="ctrl-btn" aria-label="Move Right">&rarr;</button>
+      </div>
+      <div class="ctrl-cluster">
+        <button id="attack-btn" class="ctrl-btn attack-btn" aria-label="Slash">SLASH</button>
+        <button id="jump-btn" class="ctrl-btn" aria-label="Jump">&uarr;</button>
+      </div>
+    </div>
+
+    <div id="rotate-hint">Rotate phone to landscape for best view</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    // HUD & UI elements
+    const hud = document.getElementById("hud");
+    const healthBarsEl = document.getElementById("health-bars");
+    const hpTextEl = document.getElementById("hp-text");
+    const levelLabel = document.getElementById("level-label");
+    const stageStatus = document.getElementById("stage-status");
+    const coinsLabel = document.getElementById("coins-label");
+
+    const bossHud = document.getElementById("boss-hud");
+    const bossNameEl = document.getElementById("boss-name");
+    const bossBarFill = document.getElementById("boss-bar-fill");
+
+    const startScreen = document.getElementById("start-screen");
+    const upgradeScreen = document.getElementById("upgrade-screen");
+    const levelclearScreen = document.getElementById("levelclear-screen");
+    const gameoverScreen = document.getElementById("gameover-screen");
+    const controls = document.getElementById("controls");
+
+    const MAX_POSSIBLE_BARS = 10;
+    const TOTAL_LEVELS = 300;
+    const SAVE_KEY = "sylvan_leap_campaign_v1";
+
+    // Persistent progression state
+    let save = {
+      level: 1,
+      maxBars: 3,
+      essence: 0
+    };
+
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.level === "number") {
+          save.level = Math.max(1, Math.min(TOTAL_LEVELS, parsed.level));
+          save.maxBars = Math.max(3, Math.min(MAX_POSSIBLE_BARS, parsed.maxBars || 3));
+          save.essence = Math.max(0, parsed.essence || 0);
+        }
+      }
+    } catch (_) {}
+
+    function persistSave() {
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+      } catch (_) {}
+    }
+
+    function getUpgradeCost() {
+      // Costs scale smoothly from 25 essence for bar 4 up to 145 for bar 10
+      return 25 + (save.maxBars - 3) * 20;
+    }
+
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+
+    // Mode: "start" | "playing" | "paused" | "levelclear" | "gameover"
+    let mode = "start";
+    let previousModeBeforeUpgrade = "playing";
+    let lastTime = 0;
+    let cameraX = 0;
+    let levelLength = 2600;
+    let bossArenaX = 2200;
+
+    const input = { left: false, right: false, jump: false, attack: false };
+
+    const player = {
+      x: 120,
+      y: 260,
+      r: 16,
+      vx: 0,
+      vy: 0,
+      facing: 1,
+      speed: 290,
+      jumpVel: -520,
+      gravity: 1220,
+      grounded: false,
+      hp: 3,
+      invulnTimer: 0,
+      attackTimer: 0,
+      attackCooldown: 0
+    };
+
+    let platforms = [];
+    let slimes = [];
+    let boss = null;
+    let particles = [];
+    let leaves = [];
+
+    function resize() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      if (leaves.length === 0) {
+        leaves = Array.from({ length: 22 }, () => ({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          size: 3 + Math.random() * 4,
+          speedY: 14 + Math.random() * 20,
+          drift: -18 - Math.random() * 20,
+          phase: Math.random() * Math.PI * 2
+        }));
+      }
+    }
+
+    function renderHealthHUD() {
+      healthBarsEl.innerHTML = "";
+      for (let i = 0; i < save.maxBars; i++) {
+        const seg = document.createElement("div");
+        seg.className = "hp-segment" + (i < player.hp ? " filled" : "");
+        healthBarsEl.appendChild(seg);
+      }
+      hpTextEl.textContent = `${player.hp}/${save.maxBars}`;
+      coinsLabel.textContent = String(save.essence);
+      levelLabel.textContent = `Level ${save.level} / ${TOTAL_LEVELS}`;
+    }
+
+    function refreshUpgradeUI() {
+      const cost = getUpgradeCost();
+      const isMax = save.maxBars >= MAX_POSSIBLE_BARS;
+
+      document.getElementById("upg-hp-count").textContent = `${save.maxBars} / ${MAX_POSSIBLE_BARS}`;
+      document.getElementById("upg-coins").textContent = String(save.essence);
+      document.getElementById("upg-cost").textContent = isMax ? "MAX" : String(cost);
+
+      const buyBtn = document.getElementById("buy-hp-btn");
+      buyBtn.disabled = isMax || save.essence < cost;
+      buyBtn.textContent = isMax ? "Max Health Reached (10 Bars)" : `Upgrade +1 Health Bar (${cost} Essence)`;
+
+      document.getElementById("clear-hp-count").textContent = `${save.maxBars} / ${MAX_POSSIBLE_BARS}`;
+      document.getElementById("clear-coins").textContent = String(save.essence);
+      document.getElementById("clear-cost").textContent = isMax ? "MAX" : String(cost);
+
+      const clearBuyBtn = document.getElementById("clear-buy-hp-btn");
+      clearBuyBtn.disabled = isMax || save.essence < cost;
+      clearBuyBtn.textContent = isMax ? "Max Health Reached (10 Bars)" : `Upgrade +1 Health Bar (${cost} Essence)`;
+    }
+
+    function buyHealthUpgrade() {
+      const cost = getUpgradeCost();
+      if (save.maxBars >= MAX_POSSIBLE_BARS || save.essence < cost) return;
+      save.essence -= cost;
+      save.maxBars += 1;
+      player.hp = Math.min(save.maxBars, player.hp + 1);
+      persistSave();
+      renderHealthHUD();
+      refreshUpgradeUI();
+    }
+
+    // Seeded deterministic helper per level so all 300 levels feel distinct
+    function levelRand(seed) {
+      const x = Math.sin(seed * 91.3458) * 47453.5453;
+      return x - Math.floor(x);
+    }
+
+    function buildLevel(lvl) {
+      platforms = [];
+      slimes = [];
+      particles = [];
+      cameraX = 0;
+
+      const groundY = height - 56;
+      const tier = Math.floor((lvl - 1) / 30); // Increases every 30 levels
+      levelLength = 2300 + Math.min(1800, lvl * 8);
+      bossArenaX = levelLength - 580;
+
+      // Starting safe mossy terrace
+      platforms.push({ x: 0, y: groundY, w: 340, h: 60, isGround: true });
+
+      let cursorX = 370;
+      let step = 0;
+      while (cursorX < bossArenaX - 140) {
+        step++;
+        const r1 = levelRand(lvl * 100 + step * 3 + 1);
+        const r2 = levelRand(lvl * 100 + step * 3 + 2);
+        const r3 = levelRand(lvl * 100 + step * 3 + 3);
+
+        const gap = 55 + r1 * 55;
+        cursorX += gap;
+
+        const w = 130 + r2 * 95;
+        const elevation = (r3 - 0.45) * 145;
+        const y = Math.max(145, Math.min(groundY - 10, groundY - 65 - elevation));
+
+        platforms.push({ x: cursorX, y, w, h: 16, isGround: false });
+
+        // Spawn combat slime on platform
+        if (w >= 125 && r1 > 0.25) {
+          const isElite = lvl >= 10 && r3 > 0.72;
+          const slimeHp = (isElite ? 3 : 2) + Math.floor(lvl / 45);
+          slimes.push({
+            x: cursorX + w * 0.5,
+            y: y - 16,
+            r: isElite ? 20 : 16,
+            minX: cursorX + 16,
+            maxX: cursorX + w - 16,
+            vx: (r2 < 0.5 ? -1 : 1) * (65 + Math.min(85, lvl * 0.35)),
+            hp: slimeHp,
+            maxHp: slimeHp,
+            elite: isElite,
+            hurtTimer: 0,
+            bouncePhase: r1 * Math.PI * 2
+          });
+        }
+
+        cursorX += w;
+      }
+
+      // Boss Arena Floor at the end of the level
+      const arenaWidth = 660;
+      platforms.push({
+        x: bossArenaX,
+        y: groundY,
+        w: arenaWidth,
+        h: 60,
+        isGround: true
+      });
+
+      // Elevated escape branches inside the boss arena
+      platforms.push({ x: bossArenaX + 75, y: groundY - 105, w: 130, h: 15, isGround: false });
+      platforms.push({ x: bossArenaX + arenaWidth - 205, y: groundY - 105, w: 130, h: 15, isGround: false });
+
+      // Create Level Boss
+      const bossNames = [
+        "Moss Slime Warden",
+        "Bramble Jelly Knight",
+        "Canopy Acid Matriarch",
+        "Elder Spore Golem",
+        "Sylvan Monarch Slime"
+      ];
+      const bossTitle = `Lv.${lvl} ${bossNames[(lvl - 1) % bossNames.length]}`;
+      const bossMaxHp = 6 + Math.floor(lvl * 0.45);
+
+      boss = {
+        name: bossTitle,
+        x: bossArenaX + arenaWidth - 130,
+        y: groundY - 38,
+        r: 38,
+        vx: -110,
+        vy: 0,
+        grounded: true,
+        hp: bossMaxHp,
+        maxHp: bossMaxHp,
+        minX: bossArenaX + 42,
+        maxX: bossArenaX + arenaWidth - 42,
+        groundY,
+        aiTimer: 1.4,
+        hurtTimer: 0,
+        active: false,
+        defeated: false
+      };
+
+      // Reset player at start of level
+      player.x = 95;
+      player.y = groundY - player.r;
+   
